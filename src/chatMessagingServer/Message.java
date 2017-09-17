@@ -2,8 +2,8 @@ package chatMessagingServer;
 
 public class Message {
 	
-	String name;
-	String message;
+	public String name;
+	public String message;
 	
 	public Message(String input) {
 		input = input.substring(5);
@@ -22,6 +22,11 @@ public class Message {
 			}
 			
 		}
+	}
+	
+	public Message() {
+		this.name = "";
+		this.message = "";
 	}
 
 }

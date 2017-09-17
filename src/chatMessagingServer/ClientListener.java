@@ -16,20 +16,18 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 
-
-
-
 public class ClientListener implements Runnable {
 
 	
 	Server server;
-	private Socket socket;
+	Socket socket;
 	private int socketNumber;
 	private Scanner in;
 	private PrintWriter writer;
@@ -45,6 +43,7 @@ public class ClientListener implements Runnable {
 		return this.socketNumber;
 	}
 	
+	
 	@Override
 	public void run() {
 		try {
@@ -55,75 +54,38 @@ public class ClientListener implements Runnable {
 		}
 		boolean readFile = false;
 		String fileName = "";
+		String line = "";
 		while (true) {
-			String line = "";
-			if (readFile) {
-				
-				DataInputStream dis = null;
+			if(readFile) {
+				readFile = false;
+				ImageReader reader = new ImageReader(socket, server, socketNumber);
+				new Thread(reader).start();
+				reader.fileNameBuffer = fileName;
 				try {
-					dis = new DataInputStream(this.socket.getInputStream());
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
+					Thread.sleep(4000);
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				FileOutputStream fos = null;
-				try {
-					fos = new FileOutputStream("images/" + fileName );
-				} catch (FileNotFoundException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				byte[] buffer = new byte[4096];
-				
-				int filesize = 15123; // Send file size in separate msg
-				int read = 0;
-				int totalRead = 0;
-				int remaining = filesize;
-				try {
-					while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-						totalRead += read;
-						remaining -= read;
-						System.out.println("read " + totalRead + " bytes.");
-						fos.write(buffer, 0, read);
-					}
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				
-				try {
-					fos.flush();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				try {
-					dis.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				System.exit(0);
-				
+				this.server.broadCastString(fileName, this.socketNumber);
+				this.server.broadCastFile(fileName, socketNumber);
 			} else {
-					line = in.nextLine();
-					System.out.println("Server Recieved: " + line);
-					if(line.substring(0, 5).equals("TEXT:")) {
-						Message msg = new Message(line);
-						this.server.broadCast(msg, this.socketNumber);
-					} else {
-						readFile = true;
-						fileName = line;
+					if(in.hasNextLine()) {
+						line = in.nextLine();
+						System.out.println("Server Recieved: " + line);
+						if(line.length() > 4 && line.substring(0, 5).equals("TEXT:")) {
+							Message msg = new Message(line);
+							Chat chat = Chat.getInstance();
+							chat.append(msg.name + " " + msg.message);
+							this.server.broadCast(msg, this.socketNumber);
+						} else {
+							if(line.length() > 0 && line.charAt(0) == 'I') {
+								readFile = true;
+								fileName = line.substring(1);
+							}
+						}
 					}
-				}
-				
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+					
 			}
-		
 	}
 
 }
